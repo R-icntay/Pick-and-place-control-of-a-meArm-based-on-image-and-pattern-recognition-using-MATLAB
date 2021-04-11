@@ -10,8 +10,11 @@ To develop a pick and place control algorithm for a 3-degree of freedom manipula
 ### Specific objective
 
 a. To determine forward and inverse kinematics for controlled motion of the meArm.
+
 b. To generate the manipulator trajectory based on the positional angles.
+
 c. To actuate the manipulator pick and place operation using image and speech input.
+
 
 #### Motion without trajectory
 
