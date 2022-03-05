@@ -18,7 +18,7 @@ c. To actuate the manipulator pick and place operation using image and speech
 
 ### Future plans
 
-a. Translate the same in the `R` programming language.
+a. Translate this project from `MATLAB` to the `R` programming language.
 
 
 #### Motion without trajectory
