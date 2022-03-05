@@ -16,6 +16,11 @@ b. To generate the manipulator trajectory based on the positional angles.
 c. To actuate the manipulator pick and place operation using image and speech input.
 
 
+### Future plans
+
+a. Translate the same in the `R` programming language.
+
+
 #### Motion without trajectory
 
 
