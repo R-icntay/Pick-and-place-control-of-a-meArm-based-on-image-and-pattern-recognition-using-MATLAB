@@ -16,6 +16,11 @@ b. To generate the manipulator trajectory based on the positional angles.
 c. To actuate the manipulator pick and place operation using image and speech input.
 
 
+### List of components used
+ - meArm robot arm
+ - Arduino board
+
+
 ### Future plans
 
 a. Translate this project from `MATLAB` to the `R` programming language.
