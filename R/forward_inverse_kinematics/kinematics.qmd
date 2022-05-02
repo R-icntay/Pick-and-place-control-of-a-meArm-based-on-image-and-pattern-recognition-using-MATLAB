@@ -103,10 +103,10 @@ That said, let's put this into code:
 ```{r}
 
 # Function that calculates forward kinematics
-fkin <- function(angles){
+fkin <- function(motor_angles){
   
   # Convert to radians
-  angles = angles * pi/180
+  angles = motor_angles * pi/180
   
   # Extract angles
   theta1 = angles[1] 
@@ -148,8 +148,8 @@ What would be the $x, y, z$ coordinates of the end effector when rotation of mot
 
 ```{r}
 # Calculate forward kinematics
-fkin(c(90, 113, 78))
-fkin(c(42, 110, 114))
+fkin(motor_angles = c(90, 113, 78))
+fkin(motor_angles =c(42, 110, 114))
 ```
 
 ### Inverse kinematics
@@ -194,12 +194,12 @@ $$
 Again, let's put the above into code
 
 ```{r}
-ikin <- function(coordinates){
+ikin <- function(xyz_coordinates){
   
   # Extract xyz coordinates
-  x = coordinates[1]
-  y = coordinates[2]
-  z = coordinates[3]
+  x = xyz_coordinates[1]
+  y = xyz_coordinates[2]
+  z = xyz_coordinates[3]
   
   # Account for manipulator moving right or left
   if (x >= 0){
@@ -235,8 +235,8 @@ Let's see whether we can get our previous joint angles from the results of the f
 
 ```{r}
 # Calculate inverse kinematics
-ikin(c(0, 13, 5))
-ikin(c(-11, 10, -3))
+ikin(xyz_coordinates = c(0, 13, 5))
+ikin(xyz_coordinates = c(-11, 10, -3))
 ```
 
 ## Summary
