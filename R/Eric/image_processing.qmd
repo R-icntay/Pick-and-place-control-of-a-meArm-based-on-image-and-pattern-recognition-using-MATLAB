@@ -1,0 +1,137 @@
+---
+title: "Image Processing (ish) in R"
+toc: true
+toc-location: left
+format: 
+  html:
+    number-sections: true
+    html-math-method: katex
+    code-tools: true
+    code-fold: false
+    code-link: true
+editor: visual
+execute: 
+  warning: false
+  message: false
+---
+
+### Creating Checkerboard
+
+```{r}
+checkers <- function(col1, col2)
+{
+  plot(0, 0, xlim = c(0, 8), ylim = c(0, 8), col = "white", axes = FALSE)
+  x <- sapply(0:63, function(i) {
+        polygon(c(0:1, 1:0, 0) + i %% 8 , c(0, 0:1, 1:0) + i %/% 8,
+        col = c(col1, col2)[(i + (i %/% 8)) %% 2 + 1])
+        })
+}
+
+checkers("black", "white")
+```
+
+```{r}
+library(here)
+library(waffle)
+library(patchwork)
+library(magick)
+library(tidyverse)
+
+# Vector
+x <- c(A= 1, B = 1, C = 1, D = 1, E = 1, F = 1, G = 1)
+y <- c(A= 1, B = 1, C = 1, D = 1, E = 1, F = 1, G = 1)
+
+# Create checker boxes
+w1 = waffle(x, rows = 8, flip = TRUE, colors = c("black", "white", "black", "white", "black", "white", "black", "white"), legend_pos = "", , size = 0.1) + 
+  theme(plot.margin = margin(0, 0, 0, 0))
+w2 = waffle(y, rows = 8, flip = TRUE, colors = c("white", "black", "white", "black", "white", "black", "white", "black"), legend_pos = "", size = 0.1) +
+  theme(plot.margin = margin(0, 0, 0, 0))
+
+# Make checker board
+checkerboard <- w1 / w2 / w1 / w2 / w1 / w2 / w1 / w2
+checkerboard
+#ggsave("checkerboard.png", width = 7, height = 7)
+
+```
+
+### Complement an image
+
+In the complement of a binary image, zeros become ones and ones become zeros.
+Black and white are reversed.
+
+```{r}
+library(magick)
+img <- image_read("checkerboard.png") %>% 
+  image_convert(type = "grayscale")
+img <- image_resize(img, "160x160")
+
+row_names = tibble(x = 1:160, y = rep(LETTERS[1:8], each = 20), z = paste(x, "_", y, sep = "")) %>% pull(z)
+
+col_names = tibble(x = 1:160, y = rep(1:8, each = 20), z = paste(x, "_", y, sep = "")) %>% pull(z)
+```
+
+```{r}
+# Create array and number rows and columns
+img_array <- drop(as.integer(pluck(img, 1)))
+# rownames(img_array) <- 1:nrow(img_array)
+# colnames(img_array) <- 1:ncol(img_array)
+rownames(img_array) <- row_names
+colnames(img_array) <- col_names
+
+
+# Create data frame from array and rename column
+img_df <- img_array %>% 
+  as_tibble() %>% 
+  mutate(y = row_names) %>% 
+  #rowid_to_column(var = "y") %>% 
+  pivot_longer(!y, names_to = "x", values_to = "pv") %>% 
+  mutate(pv = scales::rescale(pv, to = c(0, 1))) %>% 
+  # binarize
+  mutate(pv = case_when(
+    pv > 0.5 ~ 1,
+    TRUE ~ 0))
+
+
+img_dfx = img_dfx %>% 
+       separate(y, c("y", "pl")) %>% 
+       separate(x, c("x", "pn")) %>% 
+       mutate(pos = paste(pl, pn, sep = "")) %>% 
+       select(-c(pn, pl)) %>% 
+  mutate(across(c(y, x, pv), as.numeric)) %>% 
+  group_by(pos) %>% 
+  mutate(centroidx = round(mean(x)), centroidy = round(mean(y))) %>% 
+  ungroup()
+
+
+theme_set(theme_void())
+img_dfx %>% 
+  #filter(str_detect(pos, "A|B")) %>%
+  ggplot() +
+  geom_point(aes(x = x, y = y, color = pv), show.legend = F) +
+  geom_point(aes(x = centroidx, y = centroidy), color = "white", size = 2) +
+  geom_text(aes(x = centroidx, y = centroidy + 2, label = paste(centroidx, centroidy, sep = ",")), color = "white", size = 2.5) +
+  scale_color_gradientn(colors = c("black", "white")) +
+  coord_equal()
+
+#ggsave("checkfill.png", width = 7, height = 7)
+```
+
+```{r}
+centroids <- img_dfx %>% 
+  ungroup() %>% 
+  distinct(pos, centroidx, centroidy)
+
+get_centroid <- function(position){
+  x = centroids %>% 
+    filter(str_detect(pos, position)) %>% 
+    pull(centroidx)
+  
+  y = centroids %>% 
+    filter(str_detect(pos, position)) %>% 
+    pull(centroidy)
+  
+  return(c(x, y))
+}
+
+z=get_centroid(position = "A_2")
+```
