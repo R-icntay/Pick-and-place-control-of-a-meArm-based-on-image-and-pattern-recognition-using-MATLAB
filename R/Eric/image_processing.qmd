@@ -63,11 +63,15 @@ Black and white are reversed.
 library(magick)
 img <- image_read("checkerboard.png") %>% 
   image_convert(type = "grayscale")
-img <- image_resize(img, "160x160")
+dim_x = 160 * 4
+dim_y = 160 *4
+img <- image_resize(img, paste(dim_x, dim_y, sep = "x"))
 
-row_names = tibble(x = 1:160, y = rep(LETTERS[1:8], each = 20), z = paste(x, "_", y, sep = "")) %>% pull(z)
 
-col_names = tibble(x = 1:160, y = rep(1:8, each = 20), z = paste(x, "_", y, sep = "")) %>% pull(z)
+
+row_names = tibble(x = 1:dim_x, y = rep(LETTERS[1:8], each = dim_y/8), z = paste(x, "_", y, sep = "")) %>% pull(z)
+
+col_names = tibble(x = 1:dim_x, y = rep(1:8, each = dim_x/8), z = paste(x, "_", y, sep = "")) %>% pull(z)
 ```
 
 ```{r}
@@ -92,7 +96,7 @@ img_df <- img_array %>%
     TRUE ~ 0))
 
 
-img_dfx = img_dfx %>% 
+img_dfx = img_df %>% 
        separate(y, c("y", "pl")) %>% 
        separate(x, c("x", "pn")) %>% 
        mutate(pos = paste(pl, pn, sep = "")) %>% 
@@ -104,14 +108,14 @@ img_dfx = img_dfx %>%
 
 
 theme_set(theme_void())
-img_dfx %>% 
-  #filter(str_detect(pos, "A|B")) %>%
-  ggplot() +
-  geom_point(aes(x = x, y = y, color = pv), show.legend = F) +
-  geom_point(aes(x = centroidx, y = centroidy), color = "white", size = 2) +
-  geom_text(aes(x = centroidx, y = centroidy + 2, label = paste(centroidx, centroidy, sep = ",")), color = "white", size = 2.5) +
-  scale_color_gradientn(colors = c("black", "white")) +
-  coord_equal()
+# img_dfx %>% 
+#   #filter(str_detect(pos, "A|B")) %>%
+#   ggplot() +
+#   geom_point(aes(x = x, y = y, color = pv), show.legend = F) +
+#   geom_point(aes(x = centroidx, y = centroidy), color = "white", size = 2) +
+#   geom_text(aes(x = centroidx, y = centroidy + 2, label = paste(centroidx, centroidy, sep = ",")), color = "white", size = 2.5) +
+#   scale_color_gradientn(colors = c("black", "white")) +
+#   coord_equal()
 
 #ggsave("checkfill.png", width = 7, height = 7)
 ```
@@ -121,17 +125,226 @@ centroids <- img_dfx %>%
   ungroup() %>% 
   distinct(pos, centroidx, centroidy)
 
+
+
+z=get_centroid(position = "A2")
+z
+```
+
+### Mapping coordinates to xy
+
+Once the centroid pixel coordinates were successfully extracted, the next step involved translating them to their corresponding real-world x-y coordinates in cm.
+This scaling from pixel values to cm values was achieved by the mapping function :
+
+```{r}
+map_fun <- function(value, from_low, from_high, to_low, to_high){
+  
+  mapped_val = (value - from_low) * (to_high - to_low) / (from_high - from_low) + (to_low)
+  
+  return(mapped_val)
+}
+
+# Functuion to return mapped values
 get_centroid <- function(position){
   x = centroids %>% 
     filter(str_detect(pos, position)) %>% 
-    pull(centroidx)
+    pull(x_mapped)
   
   y = centroids %>% 
     filter(str_detect(pos, position)) %>% 
-    pull(centroidy)
+    pull(y_mapped)
   
   return(c(x, y))
 }
+```
 
-z=get_centroid(position = "A_2")
+### Trial and error
+
+```{r}
+centroids = centroids %>% 
+  mutate(x_mapped = map_fun(centroidx, from_low = 0, from_high = dim_x, to_low = 9, to_high = -9),
+         y_mapped = map_fun(centroidy, from_low = 0, from_high = 192, to_low = 11, to_high = 17)) %>% 
+  mutate(across(where(is.numeric), round))
+```
+
+```{r}
+initial_pos <- "C1"
+final_pos <- "B1"
+xy_initial <- get_centroid(position = initial_pos)
+xy_final <- get_centroid(position = final_pos)
+```
+
+```{r}
+# Initial and final angles
+z = 3.5
+xyz_initial <-  c(xy_initial, z)
+xyz_final <-  c(xy_final, z)
+
+initial_angles <-  ikin(xyz_coordinates = xyz_initial) %>% 
+  pull(motor_angles)
+
+final_angles <- ikin(xyz_coordinates = xyz_final) %>% 
+   pull(motor_angles)
+
+```
+
+### Trajectory
+
+```{r}
+
+# Tracing a trajectory can help achieve a smoother motion
+library(matlib)
+
+
+# Velocity and acceleration constraints
+v_init = 0
+v_fin = 0
+acc_init = 0
+acc_fin = 0
+
+#We desire our motion to be executed in a span of two seconds
+t0 = 0
+tfin= 2
+
+#finding the coefficients a0 - a5 using velocity and acceleration constraints set above
+t_elements = c(1, t0, t0^2, t0^3, t0^4, t0^5,
+               0, 1, 2*t0, 3*t0^2, 4*t0^3, 5*t0^4,
+               0, 0, 2, 6*t0, 12*t0^2, 20*t0^3,
+               1, tfin, tfin^2, tfin^3, tfin^4, tfin^5,
+               0, 1, 2*tfin, 3*tfin^2, 4*tfin^3, 5*tfin^4,
+               0, 0, 2, 6*tfin, 12*tfin^2, 20*tfin^3
+)
+
+
+
+# Ian: How do we modify this for multiple values?
+#Values chose arbitrary (play with the input values and check the effect on the output)
+
+
+
+init_theta = 65 
+fin_theta =  135
+
+gen_traj <- function(init_theta, fin_theta){
+  
+
+t_mtx = matrix(t_elements, nrow = 6, ncol = 6, byrow = TRUE)
+const_mtx_elmnts = c(init_theta, v_init, acc_init, fin_theta, v_fin, acc_fin) #constraints matrix
+const_mtx = matrix(const_mtx_elmnts,nrow = 6, ncol = 1, byrow = TRUE)
+a_mtx = inv(t_mtx) %*% const_mtx
+a_mtx = as.data.frame(a_mtx)
+
+#Substituting coefficient values into the quintic polynomial 
+#defining matrix time interval
+t = c(seq(from = 0, to = 2, by = 0.05))
+time <- matrix(t,nrow = 41, ncol = 1, byrow = TRUE )
+traj <- vector("numeric", 41)
+x = 1
+for(x in 1:length(t)){
+  t = time[x,1]
+  
+  q_poly = a_mtx[1,1] + a_mtx[2,1]*t + a_mtx[3,1]*t^2 + a_mtx[4,1]*t^3 + a_mtx[5,1]*t^4 + a_mtx[6,1]*t^5 #equation 7 with coefficients substituted
+  
+  x =x+1
+  
+  traj[x] <- q_poly
+}
+
+traj = round(traj)
+traj <- traj[2:length(traj)]
+return(traj)
+
+}
+
+
+cv=gen_traj(init_theta = 65, fin_theta = 135)
+```
+
+```{r}
+df_traj <- tibble(
+  m1_angles = gen_traj(init_theta = initial_angles[1],
+                       fin_theta = final_angles[1]) %>% 
+    paste("A", sep = ""),
+  
+  m2_angles = gen_traj(init_theta = initial_angles[2],
+                       fin_theta = final_angles[2]) %>% 
+    paste("B", sep = ""),
+  
+  m3_angles = gen_traj(init_theta = initial_angles[3],
+                       fin_theta = final_angles[3]) %>% 
+    paste("C", sep = "")
+) %>%
+  mutate(n = row_number()) %>% 
+  
+  group_by(n) %>% 
+  mutate(
+    str_angles = str_c(m1_angles, m2_angles, m3_angles, collapse = "")
+      ) %>% 
+  ungroup()
+```
+
+### R2Arduino
+
+```{r}
+library(serial)
+
+# See the ports available
+# listPorts()
+
+# Create an Arduino object and set up the interface parameters.
+arduino = serialConnection(name = "test1",
+                           port = "COM5",
+                           mode = "9600,n,8,1" ,
+                           buffering = "none",
+                           newline = TRUE,
+                           eof = "",
+                           translation = "cr",
+                           handshake = "none",
+                           buffersize = 8096)
+
+# Initialize the interface
+#close(arduino)
+open(arduino)
+Sys.sleep(2)
+
+
+for (r in 1:nrow(df_traj)){
+  
+  angles = df_traj %>% 
+    slice(n = r) %>% 
+    pull(str_angles)
+  
+  #close(arduino)
+  #open(arduino)
+  #Sys.sleep(3)
+  #Sys.sleep(0.3)
+  write.serialConnection(arduino, angles)
+  Sys.sleep(0.4)
+  # data=capture.output(cat(read.serialConnection(arduino,n=0)))
+  # df = tibble(rbind(df,data))
+  
+  #Sys.sleep(0.5)
+}
+Sys.sleep(3)
+
+
+# read the values sent to the serial port connection by 
+# Arduino script 
+data_frm_arduino <- tibble(from_arduino = capture.output(cat(read.serialConnection(arduino)))) %>% 
+  filter(if_any(where(is.character), ~ .x != "")) %>% 
+  mutate(from_arduino = as.integer(from_arduino))
+
+
+data_frm_arduino
+```
+
+```{r}
+
+clear_serial <- function(arduino){
+  #arduino = arduino
+  close(arduino)
+  rm(arduino)}
+
+close(arduino)
+rm(arduino)
 ```
