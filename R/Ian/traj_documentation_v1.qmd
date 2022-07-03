@@ -1,0 +1,207 @@
+---
+title: "rstudio::conf 2022: A touch of R in Robotics"
+author: "Ian Muchiri and Eric Wanjauu"
+toc: true
+number-sections: true
+highlight-style: pygments
+format:
+  html: 
+    code-fold: false
+    code-tools: true
+    html-math-method: katex
+  pdf:
+    geometry: 
+      - top=30mm
+      - left=30mm
+  docx: default
+execute: 
+  warning: false
+  message: false
+---
+
+```{r eval = TRUE, echo=FALSE, message=FALSE, warning=F}
+library(tidyverse)
+library(matlib)
+```
+
+
+This Notebook contains proposed code and prose for our talk at [rstudio::conf 2022](https://www.rstudio.com/conference/)
+
+## Controlling manipulator movement by defining Trajectory
+
+Trajectory is the path that an object in motion follows through space as a function of time. Trajectory planning is crucial as it ensures that the manipulators' end effector can move from point A to B while avoiding collisions over time.
+
+### Trajectory Planning
+After performing [Inverse Kinematics](https://github.com/ian011/A-touch-of-R-in-Robotics-/tree/main/forward_inverse_kinematics),the result gives us the final set of joint angles that produces the desired manipulator movement with respect to initial joint angles configuration. Therefore, we now have the initial joint angles and the final joint angle values.
+
+For point to point motion (as is the case with our manipulator), the problem now becomes to **find a trajectory that connects an initial to a final configuration while satisfying other specified constraints at the endpoints such as velocity and acceleration**. From mathematical first principles,angular velocity ($V$) is defined as the result of differentiating angle position in time with respect to time i.e\  $$\frac{d\theta(t)}{dt} = V$$ and acceleration\  ($\alpha$) is defined as the derivative of velocity with respect to time i.e\  $$\frac{dV}{dt} = \alpha$$
+
+For illustration purposes, lets consider planning the trajectory for the initial and final angle of a single joint. Trajectories for the remaining joints will also be derived in a similar fashion.
+
+We start by defining a couple of variables:$\\$
+\ \ \       $\theta_0$  the initial joint variable $\\$
+\ \ \       $\theta_f$  final joint variable $\\$
+\ \ \       $t_0$       the initial time before motion begins$\\$
+\ \ \       $t_f$       the final time after motion is executed $\\$
+
+Suppose at a time $t_0$, the joint variable satisfies equations:$\\$
+$$
+\theta(t_0) = \theta_0 \   \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ (Eq\ 1) 
+$$
+$$
+\frac{d\theta(t_0)}{dt} = V_0 \    \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ (Eq\ 2)  
+$$
+where $V_0$ is the initial velocity
+    
+and we wish to attain the values at $t_f$$\\$
+$$
+\theta(t_f) = \theta_f\   \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ (Eq\ 3) 
+$$
+$$
+\frac{d\theta(t_f)}{dt} = V_f\    \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ (Eq\ 4)   
+$$
+where $V_f$ is the final velocity
+
+The initial velocity and final velocity values are constraints we wish to apply to our manipulator. In addition to the velocities, we specify constraints on initial and final accelerations as:$\\$
+$$
+\frac{dV(t_0)}{dt} = \alpha_0\   \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ (Eq\ 5)   
+$$
+
+$$
+\frac{dV(t_f)}{dt} = \alpha_f\    \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ (Eq\ 6)
+$$
+where $\alpha_f$ is the initial acceleration and $\alpha_0$ is the initial acceleration
+
+     
+
+### Quintic Polynomial trajectories
+
+Since the constraints we chose to satisfy are all dependent on time, one way to ensure that we have a continuous trajectory generated at all instances of time is by defining the motor angles as a polynomial function of time $t$.A discontinuity in acceleration for instance leads to an impulsive jerk, which may reduce accuracy therefore, an ideal polynomial will have both the velocity and acceleration as continuous at all instances of time.
+To achieve this, we specify constraints on position, velocity and acceleration. Thus we have a a total of six constraints(initial and final positions,initial and final velocities, and initial and final accelerations). Based on this information, we therefore require a fifth order polynomial:$\\$
+$$
+ q(t) = a_0 + a_1t +a_2t^2 + a_3t^3 + a_4t^4+a_5t^5\   \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ (Eq\ 7) 
+$$
+Applying the relationships defined in $Eq\  1\   to\  Eq\  6$ on $Eq\ 7$, we derive the following relationships:$\\$
+$$
+\theta(t_0) = a_0 + a_1t_0 +a_2t_0^2 + a_3t_0^3 + a_4t_0^4+a_5t_0^5 \\
+$$
+$$
+v_0 = a_1 +2a_2t_0 + 3a_3t_0^2 + 4a_4t_0^3 + 5a_5t_0^4 \\
+$$
+$$
+\alpha_0 = 2a_2 + 6a_3t_0 + 12a_4t_0^2 + 20a_5t_0^3 \\
+$$
+$$
+\theta(t_f) = a_0 + a_1t_f +a_2t_f^2 + a_3t_f^3 + a_4t_f^4+a_5t_f^5 \\
+$$
+$$
+v_f = a_1 +2a_2t_f + 3a_3t_f^2 + 4a_4t_f^3 + 5a_5t_f^4 \\
+$$
+$$
+\alpha_f = 2a_2 + 6a_3t_f + 12a_4t_f^2 + 20a_5t_f^3 \\
+$$
+Which can be simplified in matrix form as:
+$$
+\begin{bmatrix}
+q_0 \\
+v_0 \\
+\alpha_0 \\
+q_f \\
+v_f \\
+\alpha_f \end{bmatrix} =
+\begin{bmatrix}
+1 & t_0 & t_0^2 & t_0^3 & t_0^4 & t_0^5 \\
+0 & 1 & 2t_0 & 3t_0^2 & 4t_0^3 & 5t_0^4 \\
+0 & 0 & 2 & 6t_0 & 12t_0^2 & 20t_0^3 \\
+1 & t_f & t_f^2 & t_f^3 & t_f^4 & t_f^5 \\
+0 & 1 & 2t_f & 3t_f^2 & 4t_f^3 & 5t_f^4 \\
+0 & 0 & 2 & 6t_f & 12t_f^2 & 20t_f^3 \\
+\end{bmatrix}
+\begin{bmatrix}
+a_0 \\
+a_1 \\
+a_2 \\
+a_3 \\
+a_4 \\
+a_5 \\
+\end{bmatrix}
+$$
+
+The goal now is to calculate a general solution, (We make the matrix with values $a_0 .....a_5$ the subject of the formula), that will give us the values of the **A matrix**, which we then substitute to $(Eq\ 7)$ so as to get our desired trajectory equation. 
+
+Enough theory,,, now lets get into the code that will help us achieve this:
+
+### Generating the trajectory (Code)
+
+We start by defining the constraints we are going to apply to our manipulator. In this case, we desire that the manipulator starts from a position of rest and stops once it gets to its final destination. Therefore to achieve this, we set the initial velocity and acceleration as 0 and the final velocity and acceleration as 0.Then we proceed to find the A matrix values:
+```{r}
+#determining values of coefficients of Eqn 7 (The A matrix)
+# install matlib library
+library(matlib)
+library(tidyverse)
+
+#The initial angle (at time t = 0)  and final angle (at time t = t_f) sent to our manipulator
+#Values chose arbitrary (play with the input values and check the effect on the output)
+init_theta = 65 
+fin_theta =  135
+
+#Setting the constraints parameters
+v_init = 0
+v_fin = 0
+acc_init = 0
+acc_fin = 0
+
+#We desire our motion to be executed in a span of two seconds
+t0 = 0
+tfin= 2
+
+#finding the coefficients a0 - a5 using velocity and acceleration constraints set above
+
+t_elements = c(1, t0, t0^2, t0^3, t0^4, t0^5,
+               0, 1, 2*t0, 3*t0^2, 4*t0^3, 5*t0^4,
+               0, 0, 2, 6*t0, 12*t0^2, 20*t0^3,
+               1, tfin, tfin^2, tfin^3, tfin^4, tfin^5,
+               0, 1, 2*tfin, 3*tfin^2, 4*tfin^3, 5*tfin^4,
+               0, 0, 2, 6*tfin, 12*tfin^2, 20*tfin^3
+               )
+t_mtx = matrix(t_elements, nrow = 6, ncol = 6, byrow = TRUE)
+
+
+
+const_mtx_elmnts = c(init_theta, v_init, acc_init, fin_theta, v_fin, acc_fin) #constraints matrix
+const_mtx = matrix(const_mtx_elmnts,nrow = 6, ncol = 1, byrow = TRUE)
+
+
+a_mtx = inv(t_mtx) %*% const_mtx
+a_mtx = as.data.frame(a_mtx)
+
+view(a_mtx)
+```
+now that we have the A values stored in a data frame, we proceed to substitute these values in equation 7 and calculate the trajectory.
+
+```{r}
+
+#Substituting coefficient values into the quintic polynomial 
+
+#defining matrix time interval
+t = c(seq(from = 0, to = 2, by = 0.05))
+time <- matrix(t,nrow = 41, ncol = 1, byrow = TRUE )
+
+traj <- vector("numeric", 41)
+
+x = 1
+ for(x in 1:length(t)){
+   t = time[x,1]
+   
+   q_poly = a_mtx[1,1] + a_mtx[2,1]*t + a_mtx[3,1]*t^2 + a_mtx[4,1]*t^3 + a_mtx[5,1]*t^4 + a_mtx[6,1]*t^5 #equation 7 with coefficients substituted
+    
+   x =x+1
+   
+   traj[x] <- q_poly
+
+ }
+
+#traj = round(traj)
+traj
+```
+
