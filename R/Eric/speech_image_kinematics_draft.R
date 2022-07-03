@@ -157,7 +157,8 @@ map_fun <- function(value, from_low, from_high, to_low, to_high){
 # Map virtual board coordinates to manipulator workspace
 centroids <- centroids %>% 
   mutate(x_mapped = map_fun(centroidx, from_low = 0, from_high = dim_x, to_low = 9, to_high = -9),
-         y_mapped = map_fun(centroidy, from_low = 0, from_high = 192, to_low = 11, to_high = 17))
+         y_mapped = map_fun(centroidy, from_low = 0, from_high = 192, to_low = 11, to_high = 17)) %>% 
+  mutate(across(where(is.numeric), round))
 
 # Function that returns xy coordinates give a box name
 get_centroid <- function(position){
