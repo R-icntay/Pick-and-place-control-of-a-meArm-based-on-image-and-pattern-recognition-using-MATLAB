@@ -64,7 +64,7 @@ library(magick)
 img <- image_read("checkerboard.png") %>% 
   image_convert(type = "grayscale")
 dim_x = 160 * 4
-dim_y = 160 *4
+dim_y = 160 * 4
 img <- image_resize(img, paste(dim_x, dim_y, sep = "x"))
 
 
@@ -108,14 +108,14 @@ img_dfx = img_df %>%
 
 
 theme_set(theme_void())
-# img_dfx %>% 
-#   #filter(str_detect(pos, "A|B")) %>%
-#   ggplot() +
-#   geom_point(aes(x = x, y = y, color = pv), show.legend = F) +
-#   geom_point(aes(x = centroidx, y = centroidy), color = "white", size = 2) +
-#   geom_text(aes(x = centroidx, y = centroidy + 2, label = paste(centroidx, centroidy, sep = ",")), color = "white", size = 2.5) +
-#   scale_color_gradientn(colors = c("black", "white")) +
-#   coord_equal()
+img_dfx %>%
+  #filter(str_detect(pos, "A|B")) %>%
+  ggplot() +
+  geom_point(aes(x = x, y = y, color = pv), show.legend = F) +
+  geom_point(aes(x = centroidx, y = centroidy), color = "white", size = 2) +
+  geom_text(aes(x = centroidx, y = centroidy + 2, label = paste(centroidx, centroidy, sep = ",")), color = "green", size = 2.5) +
+  scale_color_gradientn(colors = c("black", "white")) +
+  coord_equal()
 
 #ggsave("checkfill.png", width = 7, height = 7)
 ```
@@ -127,8 +127,8 @@ centroids <- img_dfx %>%
 
 
 
-z=get_centroid(position = "A2")
-z
+# z=get_centroid(position = "A2")
+# z
 ```
 
 ### Mapping coordinates to xy
@@ -164,7 +164,13 @@ get_centroid <- function(position){
 centroids = centroids %>% 
   mutate(x_mapped = map_fun(centroidx, from_low = 0, from_high = dim_x, to_low = 9, to_high = -9),
          y_mapped = map_fun(centroidy, from_low = 0, from_high = 192, to_low = 11, to_high = 17)) %>% 
-  mutate(across(where(is.numeric), round))
+  mutate(across(where(is.numeric), round)) %>% 
+  # Rearrange board positions to match our physical chess board
+  mutate(
+    pl = rep(LETTERS[1:8], times = nrow(centroids)/8),
+    pn = rep(1:8, each = nrow(centroids)/8),
+    pos = paste(pl, pn, sep = "")) %>% 
+  select(-c(pl, pn))
 ```
 
 ```{r}
@@ -347,4 +353,21 @@ clear_serial <- function(arduino){
 
 close(arduino)
 rm(arduino)
+```
+
+#### Sanity check
+
+Compare MATLAB and R results
+
+```{r}
+#  A character vector with one element for each line
+matlab_xy = tibble(xy = read_lines("matlab_xy.txt") %>% 
+                     str_remove_all("\\[|\\]")) %>% 
+  separate(xy, c("Mx", "My"), sep = ",") %>% 
+  mutate(across(everything(), function(x) {as.double(x) %>% round()})) %>% 
+  mutate(bp = read_lines("matlab_pos.txt") %>% 
+           str_remove_all("'")) %>% 
+  left_join(centroids %>% 
+              select(pos, Rx = x_mapped, Ry = y_mapped),
+                     by = c("bp" = "pos"), keep = TRUE)
 ```
