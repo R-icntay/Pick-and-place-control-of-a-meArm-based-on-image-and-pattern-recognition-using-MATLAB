@@ -1,0 +1,53 @@
+45A45B45C120DW90A90B90C120DW120A120B120C120DW150A150B150C180D
+
+arduino=serial('COM9','Baudrate',9600); %created an arduino object
+
+fopen(arduino); %connects the serial port object to device
+pause(2);
+default='90A90B90CC180D';
+next
+mode=input("Kindly enter the desired mode:   " );
+
+if mode==1
+    angl=input("Kindly enter the desired angles:  ", "s");
+    angl
+    fprintf(arduino,angl);
+    %output=fscanf(arduino);
+    %disp(output);
+   
+elseif mode==2
+    disp("You are now entering automatic mode.");
+    %%for i=1:2
+    angl='45A45B45C120D90A90B90C120D120A120B120C120D150A150B150C180D90A90B90C90D'
+    fprintf(arduino,angl);
+    pause(0.5);
+    %%angl='90A90B90C';
+    %fprintf(arduino,angl);
+    %pause(0.5);
+    %angl='120A120B120C';
+    %fprintf(arduino,angl);
+    %pause(0.5);
+    %angl='150A150B150C180D';
+    %fprintf(arduino,angl);
+    %pause(0.5);
+    %fprintf(arduino,'90A90B90C180D');
+    %pause(2);
+    %%end
+end
+
+
+
+%%ang='0a0bW90a90b'
+
+
+%fprintf(arduino,angl);
+%output=fscanf(arduino);
+%disp(output);
+
+
+
+next
+
+fclose(arduino);
+delete(arduino);
+clear;
