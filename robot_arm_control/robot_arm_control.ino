@@ -191,7 +191,7 @@ void loop()
 
       case 'D':
         {
-            Serial.println(t);
+            //Serial.println(t);
             servo3.write(t,20,1);
             // Serial.print(t);
             // Serial.print("\t");  
