@@ -158,6 +158,23 @@ get_centroid <- function(position){
 }
 ```
 
+#### Sanity check
+
+Compare MATLAB and R results
+
+```{r}
+#  A character vector with one element for each line
+matlab_xy = tibble(xy = read_lines("matlab_xy.txt") %>% 
+                     str_remove_all("\\[|\\]")) %>% 
+  separate(xy, c("Mx", "My"), sep = ",") %>% 
+  mutate(across(everything(), function(x) {as.double(x) %>% round()})) %>% 
+  mutate(bp = read_lines("matlab_pos.txt") %>% 
+           str_remove_all("'")) %>% 
+  left_join(centroids %>% 
+              select(pos, Rx = x_mapped, Ry = y_mapped),
+                     by = c("bp" = "pos"), keep = TRUE)
+```
+
 ### Trial and error
 
 ```{r}
@@ -209,12 +226,17 @@ ikin <- function(xyz_coordinates){
     theta2 = pi - abs(theta2)
   }
   
-  tbl <- tibble(
-    ef_position = c(x, y, z),
-    motor_angles = (c(theta1, theta2, pi-theta3)*180/pi) %>% round()
-  )
+  # tbl <- tibble(
+  #   ef_position = c(x, y, z),
+  #   motor_angles = (c(theta1, theta2, pi-theta3)*180/pi) %>% round()
+  # )
   
-  return(tbl)
+  
+  
+  #return(tbl)
+  
+  motor_angles = (c(theta1, theta2, pi-theta3)*180/pi) %>% round()
+  return(motor_angles)
   
 }
 ```
@@ -297,7 +319,9 @@ for(x in 1:length(t)){
 
 traj = round(traj)
 traj <- traj[2:length(traj)]
-return(traj)
+df_traj = tibble(traj)
+return(df_traj)
+#return(traj)
 
 }
 
@@ -394,23 +418,6 @@ close(arduino)
 rm(arduino)
 ```
 
-#### Sanity check
-
-Compare MATLAB and R results
-
-```{r}
-#  A character vector with one element for each line
-matlab_xy = tibble(xy = read_lines("matlab_xy.txt") %>% 
-                     str_remove_all("\\[|\\]")) %>% 
-  separate(xy, c("Mx", "My"), sep = ",") %>% 
-  mutate(across(everything(), function(x) {as.double(x) %>% round()})) %>% 
-  mutate(bp = read_lines("matlab_pos.txt") %>% 
-           str_remove_all("'")) %>% 
-  left_join(centroids %>% 
-              select(pos, Rx = x_mapped, Ry = y_mapped),
-                     by = c("bp" = "pos"), keep = TRUE)
-```
-
 ### Capture logic
 
 `C1` and `B2` `Capture` :
@@ -420,6 +427,8 @@ matlab_xy = tibble(xy = read_lines("matlab_xy.txt") %>%
 -   manipulator goes to `C1` then to `B2`
 
 ```{r}
+## Too much writing of code ##
+
 input <- "C1 and B2 Capture"
 
 # Remove "and"
@@ -484,13 +493,222 @@ if (str_detect(paste(input, collapse = " "), "Capture") && str_which(input, "Cap
 ```
 
 ```{r}
-# Reduce writing code?
-xg_traj <- function(init_theta, fin_theta){
-  traj = gen_traj(init_theta, fin_theta)
-  df_traj = tibble(traj)
-  return(df_traj)
+# # Reduce writing code?
+# xg_traj <- function(init_theta, fin_theta){
+#   traj = gen_traj(init_theta, fin_theta)
+#   df_traj = tibble(traj)
+#   return(df_traj)
+# }
+# 
+# map2_dfc(start_angles, OUT_angles, xg_traj)
+# pmap_dfc(list(as.list(start_angles), as.list(OUT_angles)), xg_traj)
+```
+
+```{r}
+# # Started from the bottom
+# 
+# input <- "C1 and B2 Capture"
+# 
+# # Remove "and"
+# input <- input %>% 
+#   str_remove("and") %>% 
+#   str_split(pattern = " ") %>% 
+#   unlist() %>% 
+#   str_subset(".")
+# 
+# if (str_detect(paste(input, collapse = " "), "Capture") && str_which(input, "Capture") == 3){
+#   
+#   # XYZ positions
+#   start_point = c(get_centroid(position = input[1]), 3.5)
+#   #OUT = c(13, 11.25, 3.5)
+#   end_point = c(get_centroid(position = input[2]), 3.5)
+#   
+#   
+#   # Define trajectory path
+#   start_angles <-  ikin(xyz_coordinates = c(get_centroid(position = input[1]), 3.5)) %>% 
+#   pull(motor_angles)
+#   # OUT_angles <- ikin(xyz_coordinates = OUT) %>% 
+#   # pull(motor_angles)
+#   end_angles <- ikin(xyz_coordinates = c(get_centroid(position = input[2]), 3.5)) %>% 
+#   pull(motor_angles)
+#   rest = c(90, 90, 90)
+#   
+#   # Trajectory
+#   # rest %>% sa %>% rest %>% ea %>% rest
+#   path = list(rest, start_angles, rest, end_angles, rest)
+#   for (i in 1:length(path)) {
+#     map2_dfc(path %>% pluck(i), path %>% pluck(i+1), xg_traj) %>% 
+#       `colnames<-`(LETTERS[1:ncol(.)]) %>% 
+#       mutate(across(everything(), ~ paste(.x, cur_column(), sep = ""))) %>% 
+#       rowwise() %>% 
+#       mutate(traj = paste(cur_data(), collapse = "")) %>% 
+#       ungroup() %>% distinct(traj) %>% pull(traj)
+#     
+#   }
+# }
+```
+
+```{r}
+# map(1:4, ~ map2_dfc(path %>% pluck(.x), path %>% pluck(.x+1), xg_traj) %>% 
+#       `colnames<-`(LETTERS[1:ncol(.)]) %>% 
+#       mutate(across(everything(), ~ paste(.x, cur_column(), sep = ""))) %>% 
+#       rowwise() %>% 
+#       mutate(traj = paste(cur_data(), collapse = "")) %>% 
+#       ungroup() %>% distinct(traj) %>% pull(traj)) 
+
+join_traj <- function(path_start, path_end){
+  # Calculate trajectory
+  traj_str = suppressMessages(map2_dfc(path_start, path_end, xg_traj)) %>% 
+    `colnames<-`(LETTERS[1:ncol(.)]) %>% 
+    mutate(across(everything(), ~ paste(.x, cur_column(), sep = ""))) %>% 
+    rowwise() %>% 
+    mutate(traj = paste(cur_data(), collapse = "")) %>% 
+    ungroup() %>% 
+    distinct(traj) %>% 
+    pull(traj)
+  
+  return(traj_str)
 }
 
-map2_dfc(start_angles, OUT_angles, xg_traj)
-pmap_dfc(list(as.list(start_angles), as.list(OUT_angles)), xg_traj)
 ```
+
+```{r}
+input <- "C1 and B2"
+
+# Remove "and"
+input <- input %>% 
+  str_remove("and") %>% 
+  str_split(pattern = " ") %>% 
+  unlist() %>% 
+  str_subset(".")
+
+OUT = c(13, 11.25, 3.5)
+
+
+if (str_detect(paste(input, collapse = " "), "Capture") && str_which(input, "Capture") == 3){
+  # Trajectory angles
+  start_angles <-  ikin(xyz_coordinates = c(get_centroid(position = input[1]), 3.5))
+  end_angles <- ikin(xyz_coordinates = c(get_centroid(position = input[2]), 3.5)) 
+  OUT_angles <- ikin(xyz_coordinates = OUT)
+  rest = c(90, 90, 90)
+  
+  # Trajectory
+  # rest %>% ea %>% out %>% rest %>% sa %>% rest %>% ea %>% rest
+  path = list(rest, end_angles, OUT_angles, rest, start_angles, rest, end_angles, rest)
+  path_traj = map(seq_len(length(path)-1), ~ join_traj(path %>% pluck(.x), path %>% pluck(.x+1)))
+  
+
+} else {
+  # Trajectory angles
+  start_angles <-  ikin(xyz_coordinates = c(get_centroid(position = input[1]), 3.5)) 
+  end_angles <- ikin(xyz_coordinates = c(get_centroid(position = input[2]), 3.5)) 
+  rest = c(90, 90, 90)
+  
+  # Trajectory
+  # rest %>% sa %>% rest %>% ea %>% rest
+  path = list(rest, start_angles, rest, end_angles, rest)
+  path_traj = map(seq_len(length(path)-1), ~ join_traj(path %>% pluck(.x), path %>% pluck(.x+1)))
+}
+```
+
+#### To Arduino
+
+```{r}
+library(serial)
+
+# See the ports available
+# listPorts()
+
+# Create an Arduino object and set up the interface parameters.
+arduino = serialConnection(name = "test1",
+                           port = "COM5",
+                           mode = "9600,n,8,1" ,
+                           buffering = "none",
+                           newline = TRUE,
+                           eof = "",
+                           translation = "cr",
+                           handshake = "none",
+                           buffersize = 8096)
+
+# Initialize the interface
+#close(arduino)
+open(arduino)
+Sys.sleep(2)
+
+
+for (angles in  (path_traj[[1]])){
+  
+  # angles = df_traj %>% 
+  #   slice(n = r) %>% 
+  #   pull(str_angles)
+  
+  #close(arduino)
+  #open(arduino)
+  #Sys.sleep(3)
+  #Sys.sleep(0.3)
+  write.serialConnection(arduino, angles)
+  Sys.sleep(0.4)
+  # data=capture.output(cat(read.serialConnection(arduino,n=0)))
+  # df = tibble(rbind(df,data))
+  
+  #Sys.sleep(0.5)
+}
+Sys.sleep(3)
+
+
+# read the values sent to the serial port connection by 
+# Arduino script 
+data_frm_arduino <- tibble(from_arduino = capture.output(cat(read.serialConnection(arduino)))) %>% 
+  filter(if_any(where(is.character), ~ .x != "")) %>% 
+  mutate(from_arduino = as.integer(from_arduino))
+
+
+data_frm_arduino
+```
+
+```{r}
+ write.serialConnection(arduino, "75C")
+```
+
+```{r}
+clear = function(){
+  arduino <<- arduino
+  close(arduino)
+  open(arduino)
+}
+clear()
+```
+
+```{r}
+
+walk(1:, ~ walk(path_traj[[.x]], ~ write_angles(.x)))
+write_angles = function(angles){
+  write.serialConnection(arduino, angles)
+  Sys.sleep(0.4)
+}
+
+walk(path_traj[[1]], ~ write_angles(.x))
+clear()
+for (angles in  (path_traj[[1]])){
+  
+  # angles = df_traj %>% 
+  #   slice(n = r) %>% 
+  #   pull(str_angles)
+  
+  #close(arduino)
+  #open(arduino)
+  #Sys.sleep(3)
+  #Sys.sleep(0.3)
+  write.serialConnection(arduino, angles)
+  Sys.sleep(0.4)
+  # data=capture.output(cat(read.serialConnection(arduino,n=0)))
+  # df = tibble(rbind(df,data))
+  
+  #Sys.sleep(0.5)
+}
+Sys.sleep(3)
+```
+
+### To do
+
+-work on not returning to rest position often
