@@ -427,6 +427,46 @@ join_traj <- function(path_start, path_end){
   return(traj_str)
 }
 
+# Make a list of trajectories for each path the manipulator will take
+OUT = c(13, 11.25, 3.5)
+start_angles <-  ikin(xyz_coordinates = c(get_centroid(position = initial_position), 3.5))
+end_angles <- ikin(xyz_coordinates = c(get_centroid(position = final_position %>% str_remove("capture.") %>% str_trim()), 3.5)) 
+rest = c(90, 90, 90)
+
+
+
+
+if (str_detect(final_pos, "capture")){
+  # Trajectory angles
+  OUT_angles <- ikin(xyz_coordinates = OUT)
+  rest = c(90, 90, 90)
+  
+  # Trajectory
+  # rest %>% ea %>% out %>% rest %>% sa %>% rest %>% ea %>% rest
+  # Remove a lot of RESTs
+  path = list(rest, end_angles, OUT_angles, rest, start_angles, rest, end_angles, rest)
+  path_traj = map(seq_len(length(path)-1), ~ join_traj(path %>% pluck(.x), path %>% pluck(.x+1)))
+  
+  
+} else {
+  
+  # Trajectory
+  # rest %>% sa %>% rest %>% ea %>% rest
+  # path = list(rest, start_angles, rest, end_angles, rest)
+  path = list(rest, start_angles, end_angles, rest)
+  path_traj = map(seq_len(length(path)-1), ~ join_traj(path %>% pluck(.x), path %>% pluck(.x+1)))
+  
+  # Assumption: 90 opens gripper, 180 closes
+  for (path in 1:length(path_traj)) {
+    # Make gripper open after end of a path and open at beginning of another
+    if (path %% 2 == 0) {
+      path_traj[[path]][1] = first(path_traj[[path]]) %>% paste("90D", sep = "")} else {
+        path_traj[[path]][length(path_traj[[path]])] = last(path_traj[[path]]) %>% paste("180D", sep = "")
+      }
+    
+  }
+  
+}
 
 
 
