@@ -478,7 +478,7 @@ library(serial)
 # listPorts()
 
 # Create an Arduino object and set up the interface parameters.
-arduino = serialConnection(name = "test1",
+arduino = serialConnection(name = "aRduino",
                            port = "COM9",
                            mode = "9600,n,8,1" ,
                            buffering = "none",
@@ -493,25 +493,27 @@ arduino = serialConnection(name = "test1",
 open(arduino)
 Sys.sleep(2)
 
-
-for (r in 1:nrow(df_traj)){
-  
-  angles = df_traj %>% 
-    slice(n = r) %>% 
-    pull(str_angles)
-  
-  #close(arduino)
-  #open(arduino)
-  #Sys.sleep(3)
-  #Sys.sleep(0.3)
+# Function to write to arduino
+write_angles <-  function(angles){
   write.serialConnection(arduino, angles)
   Sys.sleep(0.4)
-  # data=capture.output(cat(read.serialConnection(arduino,n=0)))
-  # df = tibble(rbind(df,data))
-  
-  #Sys.sleep(0.5)
 }
-Sys.sleep(3)
+
+# Write angles to arduino object
+walk(1:length(path_traj), ~ walk(path_traj[[.x]], ~ write_angles(.x)))
+
+# for (r in 1:nrow(df_traj)){
+#   
+#   angles = df_traj %>% 
+#     slice(n = r) %>% 
+#     pull(str_angles)
+#   
+#  
+#   write.serialConnection(arduino, angles)
+#   Sys.sleep(0.4)
+#  
+# }
+# Sys.sleep(3)
 
 
 # read the values sent to the serial port connection by 
