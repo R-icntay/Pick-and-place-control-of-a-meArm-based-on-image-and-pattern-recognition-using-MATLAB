@@ -67,7 +67,7 @@ capt_comb <- as.list(possible_cmds) %>% cross() %>% map(lift(paste))
 assert(init_pos %in% combo,msg = "Start position should be a chess board location",stop = TRUE)
 
 if(final_pos %in% capt_comb){
-  print("KATA SIMU TUKO SITE TUKO SITE") #Capture algorithm here
+  print("Capture algorithm goes here boiz") #Capture algorithm here
 } else {
   assert(final_pos %in% combo,msg = "Final position should be a chess board location",stop = TRUE)
 }
