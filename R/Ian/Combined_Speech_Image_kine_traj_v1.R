@@ -230,8 +230,8 @@ get_centroid <- function(position){
 # To do: Get what Ian outputs as text and pass it to get_centroid ---------
 
 #GETTING MAPPED XY COORDIANTED FROM FROM VOICE INPUT
-xy_initial <- get_centroid(position = initial_position)
-xy_final <- get_centroid(position = final_position)
+# xy_initial <- get_centroid(position = initial_position)
+# xy_final <- get_centroid(position = final_position)
 
 
 # Forward & Inverse kinematics ------------------------------------------------------
@@ -298,12 +298,17 @@ ikin <- function(xyz_coordinates){
     theta2 = pi - abs(theta2)
   }
   
-  tbl <- tibble(
-    ef_position = c(x, y, z),
-    motor_angles = (c(theta1, theta2, pi-theta3)*180/pi) %>% round()
-  )
+  # tbl <- tibble(
+  #   ef_position = c(x, y, z),
+  #   motor_angles = (c(theta1, theta2, pi-theta3)*180/pi) %>% round()
+  # )
   
-  return(tbl)
+  
+  
+  #return(tbl)
+  
+  motor_angles = (c(theta1, theta2, pi-theta3)*180/pi) %>% round()
+  return(motor_angles)
   
 }
 
