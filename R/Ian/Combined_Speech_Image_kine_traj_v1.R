@@ -326,15 +326,15 @@ ikin <- function(xyz_coordinates){
 ### INVOKING INVERSE KINEMATICS(MANIPULATOR MOVEMENT)-------------------------------------------------
 
 # Initial and final angles
-z = 3.5
-xyz_initial <-  c(xy_initial, z)
-xyz_final <-  c(xy_final, z)
-
-initial_angles <-  ikin(xyz_coordinates = xyz_initial) %>% 
-  pull(motor_angles)
-
-final_angles <- ikin(xyz_coordinates = xyz_final) %>% 
-  pull(motor_angles)
+# z = 3.5
+# xyz_initial <-  c(xy_initial, z)
+# xyz_final <-  c(xy_final, z)
+# 
+# initial_angles <-  ikin(xyz_coordinates = xyz_initial) %>% 
+#   pull(motor_angles)
+# 
+# final_angles <- ikin(xyz_coordinates = xyz_final) %>% 
+#   pull(motor_angles)
 
 
 # TRAJECTORY --------------------------------------------------------------
@@ -378,7 +378,7 @@ gen_traj <- function(init_theta, fin_theta){
   t_mtx = matrix(t_elements, nrow = 6, ncol = 6, byrow = TRUE)
   const_mtx_elmnts = c(init_theta, v_init, acc_init, fin_theta, v_fin, acc_fin) #constraints matrix
   const_mtx = matrix(const_mtx_elmnts,nrow = 6, ncol = 1, byrow = TRUE)
-  a_mtx = solve(t_mtx) %*% const_mtx
+  a_mtx = inv(t_mtx) %*% const_mtx
   a_mtx = as.data.frame(a_mtx)
   
   #Substituting coefficient values into the quintic polynomial 
@@ -399,7 +399,9 @@ gen_traj <- function(init_theta, fin_theta){
   
   traj = round(traj)
   traj <- traj[2:length(traj)]
-  return(traj)
+  df_traj = tibble(traj)
+  return(df_traj)
+  #return(traj)
   
 }
 
