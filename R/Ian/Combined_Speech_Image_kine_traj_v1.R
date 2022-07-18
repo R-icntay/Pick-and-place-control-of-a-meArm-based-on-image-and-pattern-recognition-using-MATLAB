@@ -8,6 +8,7 @@ library(httr)
 library(jsonlite)
 library(stringr)
 library(audio)
+library(serial)
 
 set.audio.driver(NULL)
 rec_time <- 5 # Set the time duration of the recording
@@ -457,14 +458,14 @@ if (str_detect(final_position, "capture")){
   path_traj = map(seq_len(length(path)-1), ~ join_traj(path %>% pluck(.x), path %>% pluck(.x+1)))
   
   # Assumption: 90 opens gripper, 180 closes
-  for (path in 1:length(path_traj)) {
-    # Make gripper open after end of a path and open at beginning of another
-    if (path %% 2 == 0) {
-      path_traj[[path]][1] = first(path_traj[[path]]) %>% paste("90D", sep = "")} else {
-        path_traj[[path]][length(path_traj[[path]])] = last(path_traj[[path]]) %>% paste("180D", sep = "")
-      }
-    
-  }
+  # for (path in 1:length(path_traj)) {
+  #   # Make gripper open after end of a path and open at beginning of another
+  #   if (path %% 2 == 0) {
+  #     path_traj[[path]][1] = first(path_traj[[path]]) %>% paste("90D", sep = "")} else {
+  #       path_traj[[path]][length(path_traj[[path]])] = last(path_traj[[path]]) %>% paste("180D", sep = "")
+  #     }
+  #   
+  # }
   
 }
 
