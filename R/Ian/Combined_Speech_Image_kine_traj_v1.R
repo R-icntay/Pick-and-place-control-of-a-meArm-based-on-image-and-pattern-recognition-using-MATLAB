@@ -16,7 +16,7 @@ inst <-record(x_cont, 44100, 1) #audio instance with sample rate = 44100 and num
 wait(6)
 rec <- inst$data # get the result from the audio instance object
 
-save.wave(rec,"E:/Project_302/sample4.wav")
+save.wave(rec,"sample.wav")
 
 .rs.restartR() # Temporary fix to clear the audio instance object
 #wait(6)
@@ -36,15 +36,16 @@ params = list(
   `language` = 'en-US'
 )
 
-data = upload_file("E:/Project_302/sample4.wav")  
+data = upload_file("sample.wav")  
 res <- httr::POST(url = 'https://eastus.stt.speech.microsoft.com/speech/recognition/conversation/cognitiveservices/v1', httr::add_headers(.headers=headers), query = params, body = data)
 result.list <- fromJSON(content(res, as  = 'text')) #%>% as.data.frame()
 txt_output <- as.data.frame(result.list)
 
 #View(txt_output)
 
-txt_input <- txt_output[1,2]
-View(txt_input)
+txt_input <- txt_output %>% 
+  pull(DisplayText)
+# View(txt_input)
 
 #Validate input to catch errors in transcription
 library(assert)
