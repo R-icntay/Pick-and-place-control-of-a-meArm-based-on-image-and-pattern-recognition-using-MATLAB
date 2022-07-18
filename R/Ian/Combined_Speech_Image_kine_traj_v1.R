@@ -411,6 +411,23 @@ gen_traj <- function(init_theta, fin_theta){
 # To do: Modify trajectory to take multiple values ------------------------
 #DONE------------------------------
 
+# Function that calculates trajectory angles and creates a tibble
+# with columns for each servo
+join_traj <- function(path_start, path_end){
+  # Calculate trajectory
+  traj_str = suppressMessages(map2_dfc(path_start, path_end, xg_traj)) %>% 
+    `colnames<-`(LETTERS[1:ncol(.)]) %>% 
+    mutate(across(everything(), ~ paste(.x, cur_column(), sep = ""))) %>% 
+    rowwise() %>% 
+    mutate(traj = paste(cur_data(), collapse = "")) %>% 
+    ungroup() %>% 
+    distinct(traj) %>% 
+    pull(traj)
+  
+  return(traj_str)
+}
+
+
 df_traj <- tibble(
   m1_angles = gen_traj(init_theta = initial_angles[1],
                        fin_theta = final_angles[1]) %>% 
