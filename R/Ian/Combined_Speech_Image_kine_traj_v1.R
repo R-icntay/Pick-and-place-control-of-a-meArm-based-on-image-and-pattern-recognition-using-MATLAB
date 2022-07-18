@@ -526,11 +526,10 @@ data_frm_arduino
 
 
 ###CLEAR SERIAL ASAP
-
-clear_serial <- function(arduino){
-  #arduino = arduino
+clear = function(){
+  arduino <<- arduino
   close(arduino)
-  rm(arduino)}
-
-close(arduino)
-rm(arduino)
+  open(arduino)
+  # Any need to remove the arduino object from env like in MATLAB?
+  #rm(arduino)
+}
