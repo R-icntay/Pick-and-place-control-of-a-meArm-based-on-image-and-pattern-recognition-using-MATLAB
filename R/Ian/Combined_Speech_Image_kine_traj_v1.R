@@ -445,7 +445,7 @@ if (str_detect(final_position, "capture")){
   # Trajectory
   # rest %>% ea %>% out %>% rest %>% sa %>% rest %>% ea %>% rest
   # Remove a lot of RESTs
-  path = list(rest, end_angles, OUT_angles, rest, start_angles, end_angles, rest)
+  path = list(rest, end_angles, OUT_angles, start_angles, end_angles, rest)
   path_traj = map(seq_len(length(path)-1), ~ join_traj(path %>% pluck(.x), path %>% pluck(.x+1)))
   
   
@@ -489,6 +489,15 @@ arduino = serialConnection(name = "aRduino",
                            handshake = "none",
                            buffersize = 8096)
 
+# Function to clear arduino object
+clear = function(){
+  arduino <<- arduino
+  close(arduino)
+  open(arduino)
+  # Any need to remove the arduino object from env like in MATLAB?
+  
+}
+
 # Initialize the interface
 #close(arduino)
 open(arduino)
@@ -501,7 +510,20 @@ write_angles <-  function(angles){
 }
 
 # Write angles to arduino object
-walk(1:length(path_traj), ~ walk(path_traj[[.x]], ~ write_angles(.x)))
+# Find a way to do this with walk?
+for (i in 1:length(path_traj)){
+  if (i%%2 != 0){
+    write.serialConnection(arduino, "120D")
+    walk(path_traj[[i]], ~ write_angles(.x))
+    Sys.sleep(0.4)
+  } else {
+    write.serialConnection(arduino, "90D")
+    Sys.sleep(0.4)
+    walk(path_traj[[i]], ~ write_angles(.x))
+  }
+}
+
+#walk(1:length(path_traj), ~ walk(path_traj[[.x]], ~ write_angles(.x)))
 
 # for (r in 1:nrow(df_traj)){
 #   
@@ -524,15 +546,6 @@ data_frm_arduino <- tibble(from_arduino = capture.output(cat(read.serialConnecti
   mutate(from_arduino = as.integer(from_arduino))
 
 
-data_frm_arduino
+# data_frm_arduino
 
-
-
-###CLEAR SERIAL ASAP
-clear = function(){
-  arduino <<- arduino
-  close(arduino)
-  open(arduino)
-  # Any need to remove the arduino object from env like in MATLAB?
-  #rm(arduino)
-}
+clear()
