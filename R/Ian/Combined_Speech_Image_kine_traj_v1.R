@@ -415,7 +415,7 @@ gen_traj <- function(init_theta, fin_theta){
 # with columns for each servo
 join_traj <- function(path_start, path_end){
   # Calculate trajectory
-  traj_str = suppressMessages(map2_dfc(path_start, path_end, xg_traj)) %>% 
+  traj_str = suppressMessages(map2_dfc(path_start, path_end, gen_traj)) %>% 
     `colnames<-`(LETTERS[1:ncol(.)]) %>% 
     mutate(across(everything(), ~ paste(.x, cur_column(), sep = ""))) %>% 
     rowwise() %>% 
@@ -428,26 +428,7 @@ join_traj <- function(path_start, path_end){
 }
 
 
-df_traj <- tibble(
-  m1_angles = gen_traj(init_theta = initial_angles[1],
-                       fin_theta = final_angles[1]) %>% 
-    paste("A", sep = ""),
-  
-  m2_angles = gen_traj(init_theta = initial_angles[2],
-                       fin_theta = final_angles[2]) %>% 
-    paste("B", sep = ""),
-  
-  m3_angles = gen_traj(init_theta = initial_angles[3],
-                       fin_theta = final_angles[3]) %>% 
-    paste("C", sep = "")
-) %>%
-  mutate(n = row_number()) %>% 
-  
-  group_by(n) %>% 
-  mutate(
-    str_angles = str_c(m1_angles, m2_angles, m3_angles, collapse = "")
-  ) %>% 
-  ungroup()
+
 
 #R TO ARDUINO ME ARM
 
