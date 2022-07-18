@@ -65,8 +65,8 @@ combo <- as.list(possible_cmds) %>% cross() %>% map(lift(paste))
 
 #Extract text from transcribed string
 word(txt_input, start = 1,end = -1, sep = fixed("and"))
-init_pos <- word(txt_input, start = 1,end = 1)
-final_pos <- trimws(word(txt_input, start = 2,end = -1, sep = fixed("and"))) #trims leading and trailing whitespaces
+initial_position <- word(txt_input, start = 1,end = 1)
+final_position <- trimws(word(txt_input, start = 2,end = -1, sep = fixed("and"))) #trims leading and trailing whitespaces
 
 #Capture move exception here
 possible_cmds<- list(
@@ -76,19 +76,19 @@ possible_cmds<- list(
   sep = ""
 )
 capt_comb <- as.list(possible_cmds) %>% cross() %>% map(lift(paste)) 
-assert(init_pos %in% combo,msg = "Start position should be a chess board location",stop = TRUE)
+assert(initial_position %in% combo,msg = "Start position should be a chess board location",stop = TRUE)
 
-if(final_pos %in% capt_comb){
+if(final_position %in% capt_comb){
   print("Capture algorithm here") #Capture algorithm here
   
 } else {
-  assert(substr(final_pos,1,2) %in% combo,msg = "Final position should be a chess board location",stop = TRUE)
-  final_pos <- substr(final_pos,1,2) #removes trailing fullstop
+  assert(substr(final_position,1,2) %in% combo,msg = "Final position should be a chess board location",stop = TRUE)
+  final_position <- substr(final_position,1,2) #removes trailing fullstop
 }
 
 
-initial_position <- init_pos
-final_position  <- final_pos
+initial_position <- initial_position
+final_position  <- final_position
 
 
 # To do Ian: --------------------------------------------------------------
@@ -436,7 +436,7 @@ rest = c(90, 90, 90)
 
 
 
-if (str_detect(final_pos, "capture")){
+if (str_detect(final_position, "capture")){
   # Trajectory angles
   OUT_angles <- ikin(xyz_coordinates = OUT)
   rest = c(90, 90, 90)
