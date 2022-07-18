@@ -445,7 +445,7 @@ if (str_detect(final_position, "capture")){
   # Trajectory
   # rest %>% ea %>% out %>% rest %>% sa %>% rest %>% ea %>% rest
   # Remove a lot of RESTs
-  path = list(rest, end_angles, OUT_angles, rest, start_angles, rest, end_angles, rest)
+  path = list(rest, end_angles, OUT_angles, rest, start_angles, end_angles, rest)
   path_traj = map(seq_len(length(path)-1), ~ join_traj(path %>% pluck(.x), path %>% pluck(.x+1)))
   
   
