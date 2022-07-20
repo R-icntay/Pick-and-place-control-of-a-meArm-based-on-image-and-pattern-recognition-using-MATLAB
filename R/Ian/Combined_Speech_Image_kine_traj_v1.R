@@ -298,7 +298,8 @@ if(exists("already_ran") == FALSE){
     
     
     # Calculate theta 2
-    theta2 = atan((5.5 - z) / (sqrt(x^2 + y^2)) ) + atan((12 * sin(theta3)) / (8 + 12*cos(theta3)))
+    theta2 = atan((5.5 - z) / (sqrt(x^2 + y^2)) ) + 
+      atan((12 * sin(theta3)) / (8 + 12*cos(theta3)))
     
     if(theta2 > 0){
       theta2 = pi - abs(theta2)
@@ -486,7 +487,7 @@ library(serial)
 # listPorts()
 
 # Create an Arduino object and set up the interface parameters.
-arduino = serialConnection(name = "aRduino",
+arduino = serial::serialConnection(name = "aRduino",
                            port = "COM9",
                            mode = "9600,n,8,1" ,
                            buffering = "none",
@@ -518,15 +519,16 @@ write_angles <-  function(angles){
 
 # Write angles to arduino object
 # Find a way to do this with walk?
+# Disable trajectory for now
 for (i in 1:length(path_traj)){
   if (i%%2 != 0){
     write.serialConnection(arduino, "120D")
-    walk(path_traj[[i]], ~ write_angles(.x))
+    walk(path_traj %>% pluck(i, 1), ~ write_angles(.x))
     Sys.sleep(0.4)
   } else {
     write.serialConnection(arduino, "90D")
     Sys.sleep(0.4)
-    walk(path_traj[[i]], ~ write_angles(.x))
+    walk(path_traj %>% pluck(i, 1), ~ write_angles(.x))
   }
 }
 
