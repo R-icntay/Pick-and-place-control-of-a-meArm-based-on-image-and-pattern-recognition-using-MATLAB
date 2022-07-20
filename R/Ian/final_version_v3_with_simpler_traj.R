@@ -438,8 +438,8 @@ if(exists("already_ran") == FALSE){
 } # End of run once
 # Make a list of trajectories for each path the manipulator will take
 OUT = c(13, 11.25, 3.5)
-start_angles <-  ikin(xyz_coordinates = c(get_centroid(position = initial_position), 3.5))
-end_angles <- ikin(xyz_coordinates = c(get_centroid(position = final_position %>% str_remove("capture.") %>% str_trim()), 3.5)) 
+start_angles <-  ikin(xyz_coordinates = c(get_centroid(position = initial_position), 12))
+end_angles <- ikin(xyz_coordinates = c(get_centroid(position = final_position %>% str_remove("capture.") %>% str_trim()), 12)) 
 rest = c(90, 90, 90)
 
 
@@ -465,15 +465,6 @@ if (str_detect(final_position, "capture")){
   path = list(rest, start_angles, end_angles, rest)
   path_traj = map(seq_len(length(path)-1), ~ join_traj(path %>% pluck(.x), path %>% pluck(.x+1)))
   
-  # Assumption: 90 opens gripper, 180 closes
-  # for (path in 1:length(path_traj)) {
-  #   # Make gripper open after end of a path and open at beginning of another
-  #   if (path %% 2 == 0) {
-  #     path_traj[[path]][1] = first(path_traj[[path]]) %>% paste("90D", sep = "")} else {
-  #       path_traj[[path]][length(path_traj[[path]])] = last(path_traj[[path]]) %>% paste("180D", sep = "")
-  #     }
-  #   
-  # }
   
 }
 
@@ -524,7 +515,6 @@ for (i in 1:length(path_traj)){
   if (i%%2 != 0){
     write.serialConnection(arduino, "110D")
     walk(path_traj %>% pluck(i), ~ write_angles(.x))
-    
     Sys.sleep(0.4)
   } else {
     Sys.sleep(0.4)
@@ -534,19 +524,6 @@ for (i in 1:length(path_traj)){
 }
 
 #walk(1:length(path_traj), ~ walk(path_traj[[.x]], ~ write_angles(.x)))
-
-# for (r in 1:nrow(df_traj)){
-#   
-#   angles = df_traj %>% 
-#     slice(n = r) %>% 
-#     pull(str_angles)
-#   
-#  
-#   write.serialConnection(arduino, angles)
-#   Sys.sleep(0.4)
-#  
-# }
-# Sys.sleep(3)
 
 
 # read the values sent to the serial port connection by 
