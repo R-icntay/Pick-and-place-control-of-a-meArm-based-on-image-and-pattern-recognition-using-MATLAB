@@ -11,6 +11,7 @@ library(audio)
 library(serial)
 library(dplyr)
 library(purrr)
+library(tibble)
 
 set.audio.driver(NULL)
 rec_time <- 5 # Set the time duration of the recording
@@ -39,16 +40,20 @@ params = list(
   `language` = 'en-US'
 )
 
-data = upload_file("sample4.wav")  
-res <- httr::POST(url = 'https://eastus.stt.speech.microsoft.com/speech/recognition/conversation/cognitiveservices/v1', httr::add_headers(.headers=headers), query = params, body = data)
-result.list <- fromJSON(content(res, as  = 'text')) #%>% as.data.frame()
-txt_output <- as.data.frame(result.list)
+data = httr::upload_file("sample4.wav")  
+txt_input <- httr::POST(url = 'https://eastus.stt.speech.microsoft.com/speech/recognition/conversation/cognitiveservices/v1',
+                        httr::add_headers(.headers=headers),
+                        query = params, body = data) %>% 
+  # Extract content from a request
+  content(as = "text") %>% 
+  # Convert JSON to R list then tibble
+  jsonlite::fromJSON() %>% as_tibble() %>% 
+  # Extract transcription
+  pull(DisplayText)
 
 #View(txt_output)
 
-txt_input <- txt_output %>% 
-  pull(DisplayText)
-# View(txt_input)
+
 
 #Validate input to catch errors in transcription
 library(assert)
@@ -104,7 +109,7 @@ library(here)
 library(waffle)
 library(patchwork)
 library(magick)
-library(tidyverse)
+#library(tidyverse)
 
 # Ensure the following lines run only once
 if(exists("already_ran") == FALSE){
